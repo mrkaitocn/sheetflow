@@ -1,6 +1,7 @@
 import './globals.css';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
+import AuthProvider from '@/components/AuthProvider';
 
 export const metadata = {
   title: 'SheetFlow — Công Cụ Tạo Hệ Thống Báo Cáo Google Sheets Dễ Dàng',
@@ -11,13 +12,15 @@ export default function RootLayout({ children }) {
   return (
     <html lang="vi">
       <body>
-        <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-          <Navbar />
-          <main style={{ flex: 1 }}>
-            {children}
-          </main>
-          <Footer />
-        </div>
+        <AuthProvider>
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+            <Navbar />
+            <main style={{ flex: 1 }}>
+              {children}
+            </main>
+            <Footer />
+          </div>
+        </AuthProvider>
       </body>
     </html>
   );

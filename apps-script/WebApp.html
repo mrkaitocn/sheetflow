@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><?= config.projectName || 'SheetFlow Báo Cáo' ?></title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f8fafc;
+      color: #1e293b;
+      margin: 0;
+      padding: 0;
+      line-height: 1.5;
+    }
+
+    .header {
+      background-color: #ffffff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0;
+      color: #0f172a;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 24px auto;
+      padding: 0 16px;
+    }
+
+    .toolbar {
+      background: #ffffff;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      margin-bottom: 20px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    input[type="text"], select, textarea {
+      padding: 8px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 14px;
+      background: #ffffff;
+      outline: none;
+    }
+
+    input[type="text"]:focus, select:focus, textarea:focus {
+      border-color: <?= config.appearance ? config.appearance.primaryColor : '#6366f1' ?>;
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+    }
+
+    .btn {
+      background-color: <?= config.appearance ? config.appearance.primaryColor : '#6366f1' ?>;
+      color: #ffffff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+    }
+
+    .btn-secondary {
+      background-color: #e2e8f0;
+      color: #334155;
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .table-responsive {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      background-color: #f1f5f9;
+      padding: 12px 16px;
+      font-weight: 600;
+      color: #475569;
+      border-bottom: 1px solid #e2e8f0;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: top;
+    }
+
+    tr:hover {
+      background-color: #f8fafc;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.4);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal {
+      background: #ffffff;
+      width: 90%;
+      max-width: 550px;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal h2 {
+      font-size: 18px;
+      margin-top: 0;
+      margin-bottom: 16px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #475569;
+    }
+
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .loading-spinner {
+      text-align: center;
+      padding: 40px;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1><?= config.projectName || 'SheetFlow Báo Cáo Công Việc' ?></h1>
+    <div style="font-size: 13px; color: #64748b;">Giao diện báo cáo nhân viên</div>
+  </div>
+
+  <div class="container">
+    <div class="toolbar">
+      <div class="filter-group" style="flex-wrap: wrap; gap: 12px; margin-bottom: 8px; width: 100%;">
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <label style="font-size:13px; font-weight:500;">Trạng thái:</label>
+          <select id="statusFilter" onchange="renderTable()">
+            <option value="">Tất cả</option>
+          </select>
+        </div>
+        
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <label style="font-size:13px; font-weight:500;">Người phụ trách:</label>
+          <select id="assigneeFilter" onchange="renderTable()">
+            <option value="">Tất cả</option>
+          </select>
+        </div>
+
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <label style="font-size:13px; font-weight:500;">Hạn chót:</label>
+          <select id="deadlineFilter" onchange="renderTable()">
+            <option value="">Tất cả</option>
+            <option value="overdue">Đã trễ hạn</option>
+            <option value="next7days">Trong 7 ngày tới</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 8px; width: 100%; justify-content: space-between;">
+        <input type="text" id="searchInput" placeholder="Tìm kiếm (tên, mã CV)..." onkeyup="renderTable()" style="width: 250px;" />
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-secondary" onclick="loadData()">🔄 Tải lại</button>
+          <? if (config.permissions && config.permissions.employeeCanAddTask) { ?>
+            <button class="btn" onclick="alert('Tính năng thêm mới (Form) sẽ bật popup tương tự modal cập nhật.')">+ Thêm công việc</button>
+          <? } ?>
+        </div>
+      </div>
+    </div>
+
+    <div id="tableContainer">
+      <div class="loading-spinner">Đang tải danh sách công việc...</div>
+    </div>
+  </div>
+
+  <!-- Modal Cập nhật công việc -->
+  <div id="updateModal" class="modal-overlay">
+    <div class="modal">
+      <h2 id="modalTaskTitle">Cập nhật công việc</h2>
+      <form id="updateForm" onsubmit="handleUpdate(event)">
+        <input type="hidden" id="editRowId" />
+        
+        <div id="dynamicFormFields"></div>
+
+        <div style="margin-top: 24px; display: flex; justify-content: flex-end; gap: 12px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">Hủy</button>
+          <button type="submit" class="btn">Lưu cập nhật</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let appData = { tasks: [], config: {} };
+
+    window.onload = function() {
+      loadData();
+    };
+
+    function loadData() {
+      document.getElementById('tableContainer').innerHTML = '<div class="loading-spinner">Đang tải danh sách công việc...</div>';
+      google.script.run
+        .withSuccessHandler(onDataLoaded)
+        .withFailureHandler(onError)
+        .getTasksData();
+    }
+
+    function onDataLoaded(data) {
+      appData = data || { tasks: [], config: {} };
+      populateFilterOptions();
+      renderTable();
+    }
+
+    function onError(err) {
+      document.getElementById('tableContainer').innerHTML = '<div style="color:red; padding:20px;">Lỗi tải dữ liệu: ' + err.message + '</div>';
+    }
+
+    function populateFilterOptions() {
+      const select = document.getElementById('statusFilter');
+      select.innerHTML = '<option value="">Tất cả trạng thái</option>';
+      if (appData.config && appData.config.statusFlow) {
+        appData.config.statusFlow.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.label;
+          opt.textContent = s.label;
+          select.appendChild(opt);
+        });
+      }
+      
+      const assigneeSelect = document.getElementById('assigneeFilter');
+      if (assigneeSelect) {
+        assigneeSelect.innerHTML = '<option value="">Tất cả người phụ trách</option>';
+        const assignees = [...new Set(appData.tasks.map(t => t.assignee).filter(Boolean))];
+        assignees.forEach(a => {
+          const opt = document.createElement('option');
+          opt.value = a;
+          opt.textContent = a;
+          assigneeSelect.appendChild(opt);
+        });
+      }
+    }
+
+    function renderTable() {
+      if (!appData.tasks || appData.tasks.length === 0) {
+        document.getElementById('tableContainer').innerHTML = '<div style="padding:40px; text-align:center; color:#64748b;">Chưa có công việc nào.</div>';
+        return;
+      }
+
+      // Hide columns that have visibleInApp === false
+      const columns = (appData.config && appData.config.columns) ? appData.config.columns.filter(c => c.visibleInApp !== false) : [];
+      const statusFilter = document.getElementById('statusFilter').value;
+      const assigneeFilter = document.getElementById('assigneeFilter').value;
+      const deadlineFilter = document.getElementById('deadlineFilter').value;
+      const searchVal = document.getElementById('searchInput').value.toLowerCase();
+
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const next7Days = new Date(today);
+      next7Days.setDate(today.getDate() + 7);
+
+      const filteredTasks = appData.tasks.filter(task => {
+        const matchesStatus = !statusFilter || task.status === statusFilter;
+        const matchesAssignee = !assigneeFilter || task.assignee === assigneeFilter;
+        const matchesSearch = !searchVal || 
+          (task.task_name && task.task_name.toLowerCase().includes(searchVal)) ||
+          (task.task_id && task.task_id.toLowerCase().includes(searchVal));
+        
+        let matchesDeadline = true;
+        if (deadlineFilter && task.deadline) {
+          const dl = new Date(task.deadline);
+          if (deadlineFilter === 'overdue') {
+            matchesDeadline = dl < today && task.status !== 'Hoàn thành';
+          } else if (deadlineFilter === 'next7days') {
+            matchesDeadline = dl >= today && dl <= next7Days;
+          }
+        } else if (deadlineFilter && !task.deadline) {
+          matchesDeadline = false;
+        }
+
+        return matchesStatus && matchesAssignee && matchesSearch && matchesDeadline;
+      });
+
+      let html = '<div class="table-responsive"><table><thead><tr>';
+      html += '<th>STT</th>';
+      columns.forEach(col => {
+        html += '<th>' + escapeHtml(col.label) + '</th>';
+      });
+      html += '<th>Thao tác</th></tr></thead><tbody>';
+
+      filteredTasks.forEach((task, idx) => {
+        html += '<tr>';
+        html += '<td>' + (idx + 1) + '</td>';
+
+        columns.forEach(col => {
+          let val = task[col.key] || '';
+          if (col.key === 'status') {
+            const statusObj = appData.config.statusFlow ? appData.config.statusFlow.find(s => s.label === val) : null;
+            const color = statusObj ? statusObj.color : '#64748b';
+            html += '<td><span class="status-badge" style="background-color:' + color + '15; color:' + color + '; border: 1px solid ' + color + '40;">' + escapeHtml(val || 'Chưa đặt') + '</span></td>';
+          } else if (col.key === 'attachments') {
+            const links = val.split('\n').filter(l => l.trim() !== '');
+            if (links.length > 0) {
+              let fileHtml = '<div style="font-size:12px;">';
+              links.forEach((l, i) => {
+                const isUrl = l.startsWith('http://') || l.startsWith('https://');
+                if (isUrl) {
+                  fileHtml += '<div><a href="' + escapeHtml(l) + '" target="_blank" style="color:#6366f1; text-decoration:underline;">📎 Tài liệu ' + (i+1) + '</a></div>';
+                } else {
+                  fileHtml += '<div>📎 ' + escapeHtml(l) + '</div>';
+                }
+              });
+              fileHtml += '</div>';
+              html += '<td>' + fileHtml + '</td>';
+            } else {
+              html += '<td style="color:#94a3b8; font-size:12px;">Không có</td>';
+            }
+          } else if (col.key === 'task_name') {
+            const taskIdStr = task.task_id ? '<strong>[' + escapeHtml(task.task_id) + ']</strong> ' : '';
+            html += '<td>' + taskIdStr + escapeHtml(String(val)) + '</td>';
+          } else if (col.key === 'task_id') {
+             html += '<td><strong>' + escapeHtml(String(val)) + '</strong></td>';
+          } else {
+            html += '<td>' + escapeHtml(String(val)) + '</td>';
+          }
+        });
+
+        html += '<td><button class="btn btn-secondary" style="padding:4px 8px; font-size:12px;" onclick="openUpdateModal(' + task._rowId + ')">Cập nhật</button></td>';
+        html += '</tr>';
+      });
+
+      html += '</tbody></table></div>';
+      document.getElementById('tableContainer').innerHTML = html;
+    }
+
+    function openUpdateModal(rowId) {
+      const task = appData.tasks.find(t => t._rowId === rowId);
+      if (!task) return;
+
+      document.getElementById('editRowId').value = rowId;
+      document.getElementById('modalTaskTitle').textContent = 'Cập nhật: ' + (task.task_id ? '['+task.task_id+'] ' : '') + (task.task_name || 'Công việc');
+
+      // Only show visible columns, and don't allow editing task_id
+      const columns = (appData.config.columns || []).filter(c => c.visibleInApp !== false && c.key !== 'task_id');
+      const formFields = document.getElementById('dynamicFormFields');
+      formFields.innerHTML = '';
+
+      columns.forEach(col => {
+        const isEditable = col.editable_by === 'all' || col.key === 'status' || col.key === 'notes' || col.key === 'attachments';
+        if (!isEditable) return;
+
+        const group = document.createElement('div');
+        group.className = 'form-group';
+
+        const label = document.createElement('label');
+        label.textContent = col.label;
+        group.appendChild(label);
+
+        if (col.key === 'status') {
+          const select = document.createElement('select');
+          select.name = col.key;
+          (appData.config.statusFlow || []).forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.label;
+            opt.textContent = s.label;
+            if (s.label === task[col.key]) opt.selected = true;
+            select.appendChild(opt);
+          });
+          group.appendChild(select);
+        } else if (col.type === 'textarea' || col.key === 'notes') {
+          const textarea = document.createElement('textarea');
+          textarea.name = col.key;
+          textarea.rows = 3;
+          textarea.value = task[col.key] || '';
+          group.appendChild(textarea);
+        } else if (col.type === 'files' || col.key === 'attachments') {
+          const wrapper = document.createElement('div');
+          
+          const textarea = document.createElement('textarea');
+          textarea.name = col.key;
+          textarea.rows = 3;
+          textarea.placeholder = 'Dán các đường dẫn link tài liệu Google Drive/Dropbox/xem (mỗi link 1 dòng)';
+          textarea.value = task[col.key] || '';
+          wrapper.appendChild(textarea);
+          
+          const uploadDiv = document.createElement('div');
+          uploadDiv.style.marginTop = '8px';
+          uploadDiv.style.display = 'flex';
+          uploadDiv.style.gap = '8px';
+          uploadDiv.style.alignItems = 'center';
+          
+          const fileInput = document.createElement('input');
+          fileInput.type = 'file';
+          fileInput.multiple = true;
+          fileInput.style.flex = '1';
+          fileInput.style.fontSize = '12px';
+          
+          const uploadBtn = document.createElement('button');
+          uploadBtn.type = 'button';
+          uploadBtn.textContent = 'Tải file lên';
+          uploadBtn.className = 'btn btn-secondary';
+          uploadBtn.onclick = () => handleFileUpload(fileInput, textarea, uploadBtn, task.task_id, task.task_name);
+          
+          uploadDiv.appendChild(fileInput);
+          uploadDiv.appendChild(uploadBtn);
+          wrapper.appendChild(uploadDiv);
+          
+          const hint = document.createElement('div');
+          hint.style.fontSize = '11px';
+          hint.style.color = '#64748b';
+          hint.style.marginTop = '4px';
+          hint.textContent = '💡 Bạn có thể dán link trực tiếp vào ô trên, hoặc chọn file và bấm "Tải file lên". Giới hạn ~50MB/file.';
+          wrapper.appendChild(hint);
+          
+          group.appendChild(wrapper);
+        } else {
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.name = col.key;
+          input.value = task[col.key] || '';
+          group.appendChild(input);
+        }
+
+        formFields.appendChild(group);
+      });
+
+      document.getElementById('updateModal').style.display = 'flex';
+    }
+
+    async function handleFileUpload(fileInput, textarea, btn, taskId, taskName) {
+      if (!fileInput.files || fileInput.files.length === 0) {
+        alert('Vui lòng chọn file trước khi tải lên.');
+        return;
+      }
+      
+      btn.textContent = 'Đang xử lý...';
+      btn.disabled = true;
+      
+      const filesObj = [];
+      for (let i = 0; i < fileInput.files.length; i++) {
+        const file = fileInput.files[i];
+        const base64Data = await readFileAsBase64(file);
+        filesObj.push({ name: file.name, data: base64Data });
+      }
+      
+      btn.textContent = 'Đang tải lên Drive...';
+      
+      google.script.run
+        .withSuccessHandler((res) => {
+          if (res.success) {
+            let currentText = textarea.value.trim();
+            if (currentText) currentText += '\n';
+            currentText += res.urls.join('\n');
+            textarea.value = currentText;
+            fileInput.value = ''; // clear input
+            alert('Tải lên thành công! Link file đã được tự động điền vào ô.');
+          } else {
+            alert('Lỗi tải lên: ' + res.message);
+          }
+          btn.textContent = 'Tải file lên';
+          btn.disabled = false;
+        })
+        .withFailureHandler((err) => {
+          alert('Lỗi kết nối: ' + err.message);
+          btn.textContent = 'Tải file lên';
+          btn.disabled = false;
+        })
+        .uploadFilesToDrive(filesObj, taskId, taskName);
+    }
+    
+    function readFileAsBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function closeModal() {
+      document.getElementById('updateModal').style.display = 'none';
+    }
+
+    function handleUpdate(e) {
+      e.preventDefault();
+      const rowId = document.getElementById('editRowId').value;
+      const formFields = document.getElementById('dynamicFormFields');
+      const inputs = formFields.querySelectorAll('input:not([type="file"]), select, textarea');
+      const values = {};
+
+      inputs.forEach(inp => {
+        values[inp.name] = inp.value;
+      });
+
+      alert('Đang lưu cập nhật...');
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res.success) {
+            closeModal();
+            loadData();
+          } else {
+            alert('Lỗi: ' + res.message);
+          }
+        })
+        .updateTaskFromApp({ rowId: rowId, values: values });
+    }
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+</html>

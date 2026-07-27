@@ -2,17 +2,22 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import Stepper from '@/components/ui/Stepper';
 import CodeBlock from '@/components/ui/CodeBlock';
 import { TEMPLATE_PRESETS, REQUIRED_COLUMNS, DEFAULT_STATUS_FLOW } from '@/lib/templates/schema';
 import { generateConfigJSON } from '@/lib/codegen/generateConfig';
-import { saveProject } from '@/lib/store';
+import { saveProject, getProjects, getUserSubscription } from '@/lib/store';
 import { FiLock, FiPlus, FiTrash2, FiArrowLeft, FiArrowRight, FiCheck, FiExternalLink, FiCopy } from 'react-icons/fi';
 
 function BuilderContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { data: session } = useSession();
   const presetId = searchParams.get('preset') || 'weekly-report';
+
+  const userSub = getUserSubscription(session?.user?.email);
+  const isPro = (userSub.plan === 'monthly' || userSub.plan === 'yearly') && userSub.status === 'active';
 
   const [currentStep, setCurrentStep] = useState(1);
 
@@ -89,6 +94,11 @@ function BuilderContent() {
 
   // Helper functions for Step 2: Columns
   const handleAddColumn = () => {
+    if (!isPro) {
+      alert('🔒 Gói Miễn phí chỉ hỗ trợ 7 cột bắt buộc tiêu chuẩn. Vui lòng nâng cấp lên gói PRO để thêm cột tùy chỉnh không giới hạn!');
+      router.push('/pricing');
+      return;
+    }
     if (!newColLabel.trim()) return;
     const key = 'custom_' + Date.now();
     const newCol = {
@@ -181,6 +191,12 @@ function BuilderContent() {
 
   // Save Project & Complete Setup
   const handleFinishDeployment = () => {
+    const existingProjects = getProjects();
+    if (!isPro && existingProjects.length >= 1) {
+      alert('🔒 Gói Miễn phí chỉ cho phép tạo tối đa 1 dự án. Vui lòng nâng cấp lên gói PRO để tạo dự án mới!');
+      router.push('/pricing');
+      return;
+    }
     const projectObj = {
       id: 'proj_' + Date.now(),
       name: formData.projectName,

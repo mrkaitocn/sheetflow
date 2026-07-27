@@ -3,16 +3,21 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getProjects } from '@/lib/store';
-import { FiArrowLeft, FiExternalLink, FiRefreshCw, FiSearch, FiFilter } from 'react-icons/fi';
+import { useSession } from 'next-auth/react';
+import { getProjects, getUserSubscription } from '@/lib/store';
+import { FiArrowLeft, FiExternalLink, FiRefreshCw, FiSearch, FiFilter, FiLock } from 'react-icons/fi';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 
 export default function ProjectDashboard({ params }) {
   const router = useRouter();
+  const { data: session } = useSession();
   const [project, setProject] = useState(null);
   const [data, setData] = useState({ tasks: [], config: {} });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const userSub = getUserSubscription(session?.user?.email);
+  const isPro = (userSub.plan === 'monthly' || userSub.plan === 'yearly') && userSub.status === 'active';
 
   // Filters
   const [statusFilter, setStatusFilter] = useState('');
@@ -189,47 +194,75 @@ export default function ProjectDashboard({ params }) {
             </div>
           </div>
 
-          {/* Charts */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px', marginBottom: '32px' }}>
-            <div className="glass-card" style={{ padding: '24px' }}>
-              <div style={{ fontSize: '14px', color: '#f8fafc', fontWeight: '600', marginBottom: '16px' }}>Phân bố Trạng thái</div>
-              <div style={{ height: '300px' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {pieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+          {/* Charts Section */}
+          {!isPro ? (
+            <div className="glass-card" style={{ padding: '36px', textAlign: 'center', marginBottom: '32px', border: '1px border #6366f1', background: 'rgba(99, 102, 241, 0.06)' }}>
+              <FiLock size={32} color="#818cf8" style={{ marginBottom: '12px' }} />
+              <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>
+                Biểu Đồ Phân Tích Recharts Dành Cho Tài Khoản PRO
+              </h3>
+              <p style={{ color: '#94a3b8', fontSize: '14px', maxWidth: '550px', margin: '0 auto 20px auto' }}>
+                Nâng cấp tài khoản PRO (chỉ từ 50K/tháng) để mở khóa toàn bộ Biểu đồ Tròn phân bố trạng thái và Biểu đồ Cột đo lường khối lượng công việc nhân viên.
+              </p>
+              <Link
+                href="/pricing"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                  color: '#fff',
+                  padding: '10px 24px',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  fontSize: '14px'
+                }}
+              >
+                Nâng Cấp Tài Khoản Ngay (50K)
+              </Link>
             </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px', marginBottom: '32px' }}>
+              <div className="glass-card" style={{ padding: '24px' }}>
+                <div style={{ fontSize: '14px', color: '#f8fafc', fontWeight: '600', marginBottom: '16px' }}>Phân bố Trạng thái</div>
+                <div style={{ height: '300px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={100}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
 
-            <div className="glass-card" style={{ padding: '24px' }}>
-              <div style={{ fontSize: '14px', color: '#f8fafc', fontWeight: '600', marginBottom: '16px' }}>Khối lượng công việc theo Nhân sự</div>
-              <div style={{ height: '300px' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={barData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                    <XAxis type="number" />
-                    <YAxis dataKey="name" type="category" width={100} tick={{ fill: '#cbd5e1', fontSize: 12 }} />
-                    <RechartsTooltip contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
-                    <Bar dataKey="tasks" fill="#6366f1" radius={[0, 4, 4, 0]} barSize={24} />
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="glass-card" style={{ padding: '24px' }}>
+                <div style={{ fontSize: '14px', color: '#f8fafc', fontWeight: '600', marginBottom: '16px' }}>Khối lượng công việc theo Nhân sự</div>
+                <div style={{ height: '300px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={barData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                      <XAxis type="number" />
+                      <YAxis dataKey="name" type="category" width={100} tick={{ fill: '#cbd5e1', fontSize: 12 }} />
+                      <RechartsTooltip contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
+                      <Bar dataKey="tasks" fill="#6366f1" radius={[0, 4, 4, 0]} barSize={24} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Filters */}
           <div className="glass-card" style={{ padding: '16px 24px', marginBottom: '24px', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>

@@ -39,7 +39,13 @@ export default function ProjectDashboard({ params }) {
     setError('');
     try {
       const target = webAppUrl + '?action=getData';
-      const res = await fetch(`/api/proxy?url=${encodeURIComponent(target)}`);
+      let res;
+      try {
+        res = await fetch(`/api/proxy?url=${encodeURIComponent(target)}`);
+        if (!res.ok) throw new Error('Proxy error');
+      } catch (proxyErr) {
+        res = await fetch(target);
+      }
       const result = await res.json();
       if (result && result.tasks) {
         setData(result);
